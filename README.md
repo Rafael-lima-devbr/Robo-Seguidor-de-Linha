@@ -35,12 +35,6 @@ Robô seguidor de linha utilizando 5 sensores analógicos e controle PID para co
 
 ---
 
-### ⚠️ Observação
-
-A função de PID possui erro de inicialização em variáveis (`lastime` e `erroanterior`) e deve ser corrigida.
-
----
-
 ## 🇺🇸 English
 
 ### 📌 Description
@@ -73,12 +67,6 @@ Line follower robot using 5 analog sensors and PID control for real-time traject
 * kp = 30
 * ki = 0
 * kd = 100
-
----
-
-### ⚠️ Note
-
-The PID function has an initialization issue with variables (`lastime` and `erroanterior`) and should be fixed.
 
 ---
 
