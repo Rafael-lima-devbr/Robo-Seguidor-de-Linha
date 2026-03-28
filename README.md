@@ -72,4 +72,4 @@ Line follower robot using 5 analog sensors and PID control for real-time traject
 
 ## 📜 License
 
-MIT License (recommended)
+MIT License
