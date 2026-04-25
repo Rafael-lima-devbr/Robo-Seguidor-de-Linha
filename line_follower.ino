@@ -1,115 +1,161 @@
-int sensores[5] = { 0, 0, 0, 0, 0 };
-int pinos_sensor[5] = { A1, A2, A3, A4, A5 };
-int sensores_max[5] = { 0, 0, 0, 0, 0 };
-int sensores_min[5] = { 1023, 1023, 1023, 1023, 1023 };
-int sensor_normal[5] = { 0, 0, 0, 0, 0 };
-int pesos[5] = { -4, -2, 0, 2, 4 };
-int vel_base  = 70;
-int motorE1 = 5;
-int motorE2 = 6;
-int motorD1 = 9;
-int motorD2 = 10;
+const int motorE1 = 5;
+const int motorE2 = 6;
+const int motorD1 = 10;
+const int motorD2 = 9;
+int sensor_leitura[5] = {A0, A1, A2, A3, A4};
+float sensor_bruto[5] {0,0,0,0,0};
+float sensor_max[5]= {0,0,0,0,0};
+float sensor_min[5] = { 1023, 1023, 1023, 1023, 1023};
+float sensor_normal[5] = {0,0,0,0,0};
+int sensor_digital[5] = {0,0,0,0,0};
+int pesos[5] = {-2,-1,0,1,2};
 float integral = 0;
-float kp = 30;
+float kp = 140;
 float ki = 0;
-float kd = 100;
-void setup() {
+float kd = 1.1;
+int velocidade_base = 200;
+int led = 13;
+void setup(){
+  Serial.begin(9600);
+  pinMode(led, OUTPUT);
   pinMode(motorE1, OUTPUT);
   pinMode(motorE2, OUTPUT);
   pinMode(motorD1, OUTPUT);
   pinMode(motorD2, OUTPUT);
-  Serial.begin(9600);
   Serial.println("Calibrando...");
   calibracao();
 }
-void loop() {
-  float pos = line_pos();
-  float pid = calculaPID(pos);
-  MotorPID(pid);
-} 
-void readRaw() { // Leitura Bruta dos Sensores
-  for (int i = 0; i < 5; i++) {
-    sensores[i] = analogRead(pinos_sensor[i]);
-  }
-}  
-void calibracao() {  // Calibaração de valores máximos e mínimos de leitura
-  unsigned long timer1 = millis();
-  while (millis() - timer1 < 5000) {
-    readRaw();
-    for (int i = 0; i < 5; i++) {
-      if (sensores[i] > sensores_max[i]) sensores_max[i] = sensores[i];
-      if (sensores[i] < sensores_min[i]) sensores_min[i] = sensores[i];
-    }
-  }
-    for (int i = 0; i < 5; i++) {   
-    if (sensores_max[i] - sensores_min[i] < 50) {
-        sensores_min[i] -= 25;
-        sensores_max[i] += 25;
-      }
-    }
-}
-void normal() { //Normaliza os valores lidos para uma faixa de 0 a 100
-  readRaw();
-  for (int i = 0; i < 5; i++) {
-    sensor_normal[i] = map(sensores[i], sensores_min[i], sensores_max[i], 0, 100);
-    if (sensor_normal[i] < 0) sensor_normal[i] = 0;
-    else if (sensor_normal[i] > 100) sensor_normal[i] = 100;
 
-    Serial.print(" | ");
-    Serial.print(sensor_normal[i]);
-  }
-  Serial.println(" | ");
+void loop(){
+  float pos = posicao_linha();
+  controle(pos);
 }
-float line_pos() { //Gera a posição da linha em relação ao rôbo
-  normal();
-float pos = 0;
-float soma = 0;
-static float lastpos = 0;
-float total = 0;
- for (int i = 0; i<5; i++) { 
-  soma = soma + sensor_normal[i] * pesos[i];
-  total = total + sensor_normal[i]; 
- }
-  if (total != 0) {
-    pos = soma / total;
-    lastpos = pos;
+
+void readraw(){
+  for (int i = 0; i<5; i++){
+    sensor_bruto[i] = analogRead(sensor_leitura[i]);
+  }
+}
+
+void calibracao() {
+  unsigned long timer = millis();
+  while (millis() - timer < 5000) {
+    readraw();
+    for (int i = 0; i<5; i++){
+    if (sensor_max[i] < sensor_bruto[i]) sensor_max[i] = sensor_bruto[i];
+    if (sensor_min[i] > sensor_bruto[i]) sensor_min[i] = sensor_bruto[i];
+    }
+  }
+}
+
+void normalizacao() {
+  readraw();
+  for (int i = 0; i<5; i++){
+  sensor_normal[i] = constrain(map(sensor_bruto[i], sensor_min[i], sensor_max[i], 0, 100), 0, 100);
+  //Serial.print(" | ");
+  //Serial.print(sensor_normal[i]);
+  //.print(" | ");
+  }
+  //Serial.println();
+}
+
+float posicao_linha() {
+  normalizacao();
+  float posicao = 0;
+  static float lastposicao = 0;
+  float total = 0;
+  float soma = 0;
+  for (int i = 0; i<5; i++) {
+    soma += sensor_normal[i] * pesos[i];
+    total += sensor_normal[i];
+  }  
+  if (total > 10) {
+      posicao = soma/total;
+      lastposicao = posicao;
   } else {
-    pos = lastpos;
-  }
-  return pos;
+    posicao = lastposicao;
 }
-float calculaPID(float pos) { //Calcula a correção do rôbo para o motor
-  float erro = -pos;
-  unsigned long now = millis();
-  float dt = now - lastime;
-  integral= integral + erro*dt;
-    if (integral > 250) integral = 250; 
-    if (integral < -250) integral = -250;
-  float derivada = (erro - erroanterior)/dt;
-  float saida = kp * erro + ki * integral + kd * derivada;
-  static float erroanterior = erro;
-  static unsigned long lastime = now;
+return posicao;
+}
+
+float PID(float posicao){
+  float setpoint = 0;
+  static float erroanterior = 0;
+  static unsigned long lastime = 0;
+  float erro = setpoint-posicao;
+  unsigned long now= millis();
+  float dt = (now-lastime)/1000.0;
+  integral += erro*dt;
+  integral = constrain(integral, -250 , 250);
+  float derivada = (erro-erroanterior)/dt;
+  float saida = kp*erro + ki*integral + kd*derivada;
+  erroanterior = erro;
+  lastime = now;
   return saida;
 }
-void MotorPID(float pid) { //Realiza o movimento de correção calculado pelo PID
-  int velE = vel_base + pid;
-  int velD = vel_base - pid;
-  if (velE > 255) velE = 255;
-  if (velE < -255) velE = -255;
-  if (velD > 255) velD = 255;
-  if (velD < -255) velD = -255;
-    if (velD >= 0) {
-      analogWrite(motorD1, velD);
+
+void motor(float pid) {
+  int velocidade_esquerda = constrain(velocidade_base + pid, -255, 255);
+  int velocidade_direita = constrain(velocidade_base - pid, -255, 255);
+  if (velocidade_direita > -100 && velocidade_direita <0) velocidade_direita = -100;
+  if (velocidade_direita <100 && velocidade_direita>0) velocidade_direita = 100;
+  if (velocidade_esquerda> -100 && velocidade_esquerda <0) velocidade_esquerda = -100;
+  if (velocidade_esquerda <100 &&  velocidade_esquerda >0) velocidade_esquerda = 100;
+  
+  if (velocidade_direita >= 0) {
+      analogWrite(motorD1, velocidade_direita);
       analogWrite(motorD2, 0);
-    } else {
+  } else {
       analogWrite(motorD1, 0);
-      analogWrite(motorD2, -velD);
+      analogWrite(motorD2, -velocidade_direita);
     } 
-  if (velE >= 0) {
-      analogWrite(motorE1, velE);
+  if (velocidade_esquerda >= 0) {
+      analogWrite(motorE1, velocidade_esquerda);
       analogWrite(motorE2, 0);
-    } else {
+  } else {
       analogWrite(motorE1, 0);
-      analogWrite(motorE2, -velE);
+      analogWrite(motorE2, -velocidade_esquerda);
+    }  
 }
+
+void digital(){
+  for (int i = 0; i<5; i++) {
+  if (sensor_normal[i] >= 50) {
+  sensor_digital[i] = 1;
+  } else sensor_digital[i] = 0; 
+  //Serial.print(" | ");
+  //Serial.print(sensor_digital[i]);
+  //Serial.print(" | "); 
+  }
+}
+
+void controle(float pos){
+  digital();
+    if (sensor_digital[0] + sensor_digital[1] >= 2 && sensor_normal[4] == 0){
+      digitalWrite(led, 1);
+        analogWrite(motorD2, velocidade_base);
+        analogWrite(motorE1, velocidade_base);
+        analogWrite(motorE2, 0);
+        analogWrite(motorD1, 0);
+        delay(200);
+        digitalWrite(led, 0);
+    } else if (sensor_digital[4] + sensor_digital[3] >=2 && sensor_normal[0] == 0){
+      digitalWrite(led, 1);
+        analogWrite(motorD1, velocidade_base);
+        analogWrite(motorE2, velocidade_base);
+        analogWrite(motorE1, 0);
+        analogWrite(motorD2, 0);
+        delay(200);
+        digitalWrite(led, 0);
+    } else if (sensor_digital[0] && sensor_digital[1] && sensor_digital[2] && sensor_digital[3] && sensor_digital[4]) {
+        analogWrite(motorD1, 0);
+        analogWrite(motorE2, 0);
+        analogWrite(motorE1, 0);
+        analogWrite(motorD2, 0);
+        delay(7000);
+    }
+    else{
+      float pid = PID(pos);
+      motor(pid);
+    }
 }
