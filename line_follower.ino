@@ -14,10 +14,8 @@ float kp = 140;
 float ki = 0;
 float kd = 1.1;
 int velocidade_base = 200;
-int led = 13;
 void setup(){
   Serial.begin(9600);
-  pinMode(led, OUTPUT);
   pinMode(motorE1, OUTPUT);
   pinMode(motorE2, OUTPUT);
   pinMode(motorD1, OUTPUT);
@@ -27,8 +25,7 @@ void setup(){
 }
 
 void loop(){
-  float pos = posicao_linha();
-  controle(pos);
+  controle();
 }
 
 void readraw(){
@@ -129,32 +126,32 @@ void digital(){
   }
 }
 
-void controle(float pos){
+void controle(){
+  normalizacao();
   digital();
-    if (sensor_digital[0] + sensor_digital[1] >= 2 && sensor_normal[4] == 0){
-      digitalWrite(led, 1);
+  if (sensor_digital[0] + sensor_digital[1] >= 2 && sensor_normal[4] == 0){
         analogWrite(motorD2, velocidade_base);
         analogWrite(motorE1, velocidade_base);
         analogWrite(motorE2, 0);
         analogWrite(motorD1, 0);
         delay(200);
         digitalWrite(led, 0);
-    } else if (sensor_digital[4] + sensor_digital[3] >=2 && sensor_normal[0] == 0){
-      digitalWrite(led, 1);
+  } else if (sensor_digital[4] + sensor_digital[3] >=2 && sensor_normal[0] == 0){
         analogWrite(motorD1, velocidade_base);
         analogWrite(motorE2, velocidade_base);
         analogWrite(motorE1, 0);
         analogWrite(motorD2, 0);
         delay(200);
         digitalWrite(led, 0);
-    } else if (sensor_digital[0] && sensor_digital[1] && sensor_digital[2] && sensor_digital[3] && sensor_digital[4]) {
+  } else if (sensor_digital[0] && sensor_digital[1] && sensor_digital[2] && sensor_digital[3] && sensor_digital[4]) {
         analogWrite(motorD1, 0);
         analogWrite(motorE2, 0);
         analogWrite(motorE1, 0);
         analogWrite(motorD2, 0);
         delay(7000);
-    }
-    else{
+  }
+  else{
+      float pos = posicao_linha();
       float pid = PID(pos);
       motor(pid);
     }
