@@ -5,15 +5,14 @@ const int motorD2 = 9;
 int sensor_leitura[5] = {A0, A1, A2, A3, A4};
 float sensor_bruto[5] {0,0,0,0,0};
 float sensor_max[5]= {0,0,0,0,0};
-float sensor_min[5] = { 1023, 1023, 1023, 1023, 1023};
+float sensor_min[5] = { 1023,1023, 1023, 1023, 1023};
 float sensor_normal[5] = {0,0,0,0,0};
 int sensor_digital[5] = {0,0,0,0,0};
 int pesos[5] = {-2,-1,0,1,2};
-float integral = 0;
-float kp = 140;
-float ki = 0;
-float kd = 1.1;
-int velocidade_base = 200;
+float kp = 130;
+float kd = 5;
+int velocidade_base = 170;
+
 void setup(){
   Serial.begin(9600);
   pinMode(motorE1, OUTPUT);
@@ -82,10 +81,8 @@ float PID(float posicao){
   float erro = setpoint-posicao;
   unsigned long now= millis();
   float dt = (now-lastime)/1000.0;
-  integral += erro*dt;
-  integral = constrain(integral, -250 , 250);
   float derivada = (erro-erroanterior)/dt;
-  float saida = kp*erro + ki*integral + kd*derivada;
+  float saida = kp*erro + kd*derivada;
   erroanterior = erro;
   lastime = now;
   return saida;
@@ -94,10 +91,10 @@ float PID(float posicao){
 void motor(float pid) {
   int velocidade_esquerda = constrain(velocidade_base + pid, -255, 255);
   int velocidade_direita = constrain(velocidade_base - pid, -255, 255);
-  if (velocidade_direita > -100 && velocidade_direita <0) velocidade_direita = -100;
-  if (velocidade_direita <100 && velocidade_direita>0) velocidade_direita = 100;
-  if (velocidade_esquerda> -100 && velocidade_esquerda <0) velocidade_esquerda = -100;
-  if (velocidade_esquerda <100 &&  velocidade_esquerda >0) velocidade_esquerda = 100;
+  if (velocidade_direita > -120 && velocidade_direita <0) velocidade_direita = -120;
+  if (velocidade_direita <120 && velocidade_direita>0) velocidade_direita = 120;
+  if (velocidade_esquerda> -120 && velocidade_esquerda <0) velocidade_esquerda = -120;
+  if (velocidade_esquerda <120 &&  velocidade_esquerda >0) velocidade_esquerda = 120;
   
   if (velocidade_direita >= 0) {
       analogWrite(motorD1, velocidade_direita);
@@ -116,6 +113,7 @@ void motor(float pid) {
 }
 
 void digital(){
+  normalizacao();
   for (int i = 0; i<5; i++) {
   if (sensor_normal[i] >= 50) {
   sensor_digital[i] = 1;
@@ -127,30 +125,36 @@ void digital(){
 }
 
 void controle(){
-  normalizacao();
   digital();
   if (sensor_digital[0] + sensor_digital[1] >= 2 && sensor_normal[4] == 0){
-        analogWrite(motorD2, velocidade_base);
-        analogWrite(motorE1, velocidade_base);
+        analogWrite(motorD2, 200);
+        analogWrite(motorE1, 200);
         analogWrite(motorE2, 0);
         analogWrite(motorD1, 0);
         delay(200);
-        digitalWrite(led, 0);
   } else if (sensor_digital[4] + sensor_digital[3] >=2 && sensor_normal[0] == 0){
-        analogWrite(motorD1, velocidade_base);
-        analogWrite(motorE2, velocidade_base);
+        analogWrite(motorD1, 200);
+        analogWrite(motorE2, 200);
         analogWrite(motorE1, 0);
         analogWrite(motorD2, 0);
         delay(200);
-        digitalWrite(led, 0);
   } else if (sensor_digital[0] && sensor_digital[1] && sensor_digital[2] && sensor_digital[3] && sensor_digital[4]) {
+        static unsigned long timer = millis();
+      while(millis()-timer<850) {
+        while(sensor_digital[2]==1) {
+        digital();
+        analogWrite(motorD1, 130);
+        analogWrite(motorE1, 130);
+        }
+        while(sensor_digital[2]==0){
         analogWrite(motorD1, 0);
         analogWrite(motorE2, 0);
         analogWrite(motorE1, 0);
         analogWrite(motorD2, 0);
         delay(7000);
-  }
-  else{
+        }
+      }
+  } else {
       float pos = posicao_linha();
       float pid = PID(pos);
       motor(pid);
