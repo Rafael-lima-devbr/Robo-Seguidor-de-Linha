@@ -1,8 +1,8 @@
-# 🤖 Robô Seguidor de Linha com PID
+# 🤖 Robô Seguidor de Linha com PID (PD)
 
 ## 📌 Descrição
-Robô seguidor de linha utilizando **5 sensores analógicos** e controle **PID** para correção de trajetória em tempo real.  
-O sistema implementa calibração automática, normalização dos sensores, cálculo da posição da linha e lógica especial para curvas e parada.
+Robô seguidor de linha utilizando **5 sensores analógicos** e controle **PD (Proporcional + Derivativo)** para correção de trajetória em tempo real.  
+O sistema possui calibração automática, normalização dos sensores, cálculo da posição da linha e lógica especial para curvas bruscas e parada inteligente.
 
 ---
 
@@ -13,85 +13,90 @@ O sistema implementa calibração automática, normalização dos sensores, cál
 - Captura os valores **mínimos e máximos** de cada sensor
 
 ### 🔵 2. Leitura e Normalização
-- Valores brutos são convertidos para uma escala de **0 a 100**
-- Garante consistência entre os sensores
+- Valores brutos convertidos para escala de **0 a 100**
+- Garante consistência mesmo com variações do ambiente
 
 ### 🟣 3. Cálculo da Posição da Linha
 - Média ponderada utilizando:
-pesos = [-2, -1, 0, 1, 2];
-- Se a linha for perdida, o sistema utiliza a **última posição válida**
+pesos = [-2, -1, 0, 1, 2]
 
-### 🔴 4. Controle PID
+- Se a linha for perdida, utiliza a **última posição válida**
+
+### 🔴 4. Controle PD
 Erro calculado como:
-erro = setpoint (0) - posicao;
+erro = setpoint (0) - posicao
 
 Componentes:
-- Proporcional  
-- Integral (com limite para evitar windup)  
-- Derivativo (baseado no tempo dt)  
+- Proporcional (kp)
+- Derivativo (kd, baseado no tempo dt)
+
+Saída:
+saida = kp * erro + kd * derivada
+
+---
 
 ### 🟠 5. Controle dos Motores
-- Velocidade base ajustada com saída do PID  
-- Limite mínimo para evitar zona morta do motor  
-- Controle de direção (frente e ré)  
+- Velocidade base ajustada com saída do controle
+- Limite mínimo de potência para evitar zona morta
+- Controle de direção (frente e ré)
 
 ---
 
 ## 🧠 Lógica Especial
 
-- Curva forte à esquerda  
-  Quando sensores da esquerda detectam linha forte  
+- **Curva forte à esquerda**
+  - Ativada quando sensores da esquerda detectam linha forte
 
-- Curva forte à direita  
-  Quando sensores da direita detectam linha forte  
+- **Curva forte à direita**
+  - Ativada quando sensores da direita detectam linha forte
 
-- Parada total  
-  Quando todos os sensores detectam linha simultaneamente  
+- **Parada inteligente**
+  - Quando todos sensores detectam linha:
+    - Aguarda curto período
+    - Se perder o sensor central → robô para completamente
 
 ---
 
 ## 🔌 Hardware
 
-- Arduino (Uno/Nano)  
-- 5 sensores IR analógicos  
-- Driver de motor (ex: L298N)  
-- 2 motores DC  
-- LED no pino 13  
+- Arduino (Uno/Nano)
+- 5 sensores IR analógicos
+- Driver de motor (ex: L298N)
+- 2 motores DC
 
 ---
 
 ## ⚙️ Parâmetros
 
-### PID
-kp = 140  
-ki = 0  
-kd = 1.1  
+### Controle (PD)
+kp = 130  
+kd = 2  
 
 ### Velocidade Base
-velocidade_base = 200  
+velocidade_base = 170  
 
-### Pesos
+### Pesos dos Sensores
 [-2, -1, 0, 1, 2]
 
 ---
 
 ## 🔍 Detalhes Técnicos
 
-- Anti-windup no termo integral:
-integral = constrain(integral, -250, 250);
-
 - Cálculo de tempo:
-dt = (now - lasttime) / 1000.0;
+dt = (now - lasttime) / 1000.0
 
-- Conversão para digital:
+- Conversão analógico → digital:
 sensor_normal >= 50 → 1  
 sensor_normal < 50 → 0  
 
 - Saída dos motores:
 velocidade entre -255 e 255  
 
-- Zona mínima:
-valores entre -100 e 100 são ajustados para evitar baixa potência  
+- Zona mínima de potência:
+valores entre -120 e 120 são ajustados para evitar baixa resposta  
+
+- Tratamento de perda de linha:
+usa última posição válida ao invés de zerar
 
 ---
 
@@ -103,10 +108,10 @@ setup()
  └── calibração
 
 loop()
- ├── cálculo da posição
- └── controle
+ └── controle()
+      ├── leitura digital
       ├── lógica especial
-      └── PID + motores
+      └── PD + motores
 
 ---
 
