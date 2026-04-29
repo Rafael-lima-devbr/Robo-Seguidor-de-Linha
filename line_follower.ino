@@ -56,7 +56,6 @@ void normalizacao() {
 }
 
 float posicao_linha() {
-  normalizacao();
   float posicao = 0;
   static float lastposicao = 0;
   float total = 0;
