@@ -126,12 +126,12 @@ void digital(){
 void controle(){
   digital();
   if (sensor_digital[0] + sensor_digital[1] >= 2 && sensor_normal[4] == 0){
-        analogWrite(motorD1, 0); analogWrite(E1, 200);
-        analogWrite(motorD2, 200); analogWrite(E2,0);
+        analogWrite(motorD1, 0); analogWrite(motorE1, 200);
+        analogWrite(motorD2, 200); analogWrite(motorE2,0);
         delay(200);
   } else if (sensor_digital[4] + sensor_digital[3] >=2 && sensor_normal[0] == 0){
-        analogWrite(motorD1, 200); analogWrite(E1,0);
-        analogWrite(motorD2, 0); analogWrite(E2, 200);
+        analogWrite(motorD1, 200); analogWrite(motorE1,0);
+        analogWrite(motorD2, 0); analogWrite(motorE2, 200);
         delay(200);
   } else if (sensor_digital[0] && sensor_digital[1] && sensor_digital[2] && sensor_digital[3] && sensor_digital[4]) {
         unsigned long timer = millis();
